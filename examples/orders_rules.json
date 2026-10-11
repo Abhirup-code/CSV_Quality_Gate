@@ -1,0 +1,12 @@
+{
+  "name": "orders",
+  "columns": {
+    "order_id": {"type": "int", "required": true, "unique": true, "min": 1},
+    "customer_email": {"type": "string", "required": true, "pattern": "[^@\\s]+@[^@\\s]+\\.[^@\\s]+"},
+    "order_date": {"type": "date", "required": true, "format": "%Y-%m-%d"},
+    "region": {"type": "string", "allowed": ["Midwest", "Northeast", "South", "West"], "severity": "warning"},
+    "amount": {"type": "float", "required": true, "min": 0, "max": 10000},
+    "status": {"type": "string", "required": true, "allowed": ["pending", "shipped", "delivered", "cancelled"]}
+  },
+  "dataset": {"min_rows": 1, "no_duplicate_rows": true}
+}

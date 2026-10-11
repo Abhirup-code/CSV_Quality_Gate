@@ -1,0 +1,113 @@
+"""Core checks. Row numbers are CSV line numbers (header is line 1)."""
+import csv
+import datetime as dt
+import math
+import re
+
+
+def read_csv(path):
+    """Return (header, rows) where rows is a list of (line_number, cells)."""
+    with open(path, newline="", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        header = next(reader, [])
+        rows = [(n, cells) for n, cells in enumerate(reader, start=2) if cells]
+    return [h.strip() for h in header], rows
+
+
+def parse_value(text, col_type, fmt=None):
+    """Convert text to its type, or raise ValueError."""
+    if col_type == "int":
+        return int(text)
+    if col_type == "float":
+        value = float(text)
+        if math.isnan(value) or math.isinf(value):
+            raise ValueError("not a finite number")
+        return value
+    if col_type == "date":
+        return dt.datetime.strptime(text, fmt or "%Y-%m-%d").date()
+    return text
+
+
+def check_cell(raw, spec):
+    """Return a list of (rule, message) problems for one cell."""
+    value = raw.strip()
+    if value == "":
+        return [("required", "value is missing")] if spec.get("required") else []
+
+    col_type = spec.get("type", "string")
+    try:
+        parsed = parse_value(value, col_type, spec.get("format"))
+    except ValueError:
+        return [("type", f"'{value}' is not a valid {col_type}")]
+
+    problems = []
+    if col_type in {"int", "float"}:
+        if "min" in spec and parsed < spec["min"]:
+            problems.append(("min", f"{value} is below the minimum of {spec['min']}"))
+        if "max" in spec and parsed > spec["max"]:
+            problems.append(("max", f"{value} is above the maximum of {spec['max']}"))
+    if "allowed" in spec and value not in [str(a) for a in spec["allowed"]]:
+        problems.append(("allowed", f"'{value}' is not one of {spec['allowed']}"))
+    if "pattern" in spec and not re.fullmatch(spec["pattern"], value):
+        problems.append(("pattern", f"'{value}' does not match the required pattern"))
+    if "max_length" in spec and len(value) > spec["max_length"]:
+        problems.append(("max_length", f"length {len(value)} exceeds {spec['max_length']}"))
+    return problems
+
+
+def _issue(row, column, rule, value, message, severity):
+    return {"row": row, "column": column, "rule": rule, "value": value,
+            "message": message, "severity": severity}
+
+
+def run_checks(header, rows, rules):
+    """Run every rule and return a list of issue dicts."""
+    issues = []
+    columns = rules["columns"]
+    dataset = rules.get("dataset", {})
+
+    index = {name: i for i, name in enumerate(header)}
+    for name in columns:
+        if name not in index:
+            issues.append(_issue(None, name, "missing_column", None,
+                                 f"column '{name}' is not in the file", "error"))
+
+    if "min_rows" in dataset and len(rows) < dataset["min_rows"]:
+        issues.append(_issue(None, None, "min_rows", len(rows),
+                             f"file has {len(rows)} rows, expected at least {dataset['min_rows']}",
+                             "error"))
+
+    seen_unique = {name: {} for name, s in columns.items() if s.get("unique")}
+    seen_rows = {}
+
+    for line, cells in rows:
+        if len(cells) != len(header):
+            issues.append(_issue(line, None, "column_count", len(cells),
+                                 f"row has {len(cells)} fields, expected {len(header)}", "error"))
+            continue
+
+        for name, spec in columns.items():
+            if name not in index:
+                continue
+            raw = cells[index[name]]
+            severity = spec.get("severity", "error")
+            for rule, message in check_cell(raw, spec):
+                issues.append(_issue(line, name, rule, raw.strip(), message, severity))
+            value = raw.strip()
+            if name in seen_unique and value:
+                first = seen_unique[name].get(value)
+                if first is None:
+                    seen_unique[name][value] = line
+                else:
+                    issues.append(_issue(line, name, "unique", value,
+                                         f"'{value}' already appears on line {first}", severity))
+
+        if dataset.get("no_duplicate_rows"):
+            key = tuple(c.strip() for c in cells)
+            first = seen_rows.get(key)
+            if first is None:
+                seen_rows[key] = line
+            else:
+                issues.append(_issue(line, None, "duplicate_row", None,
+                                     f"row is identical to line {first}", "error"))
+    return issues

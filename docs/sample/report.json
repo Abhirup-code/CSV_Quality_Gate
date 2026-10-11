@@ -1,0 +1,130 @@
+{
+  "summary": {
+    "source": "orders_dirty.csv",
+    "rules": "orders",
+    "status": "FAIL",
+    "total_rows": 202,
+    "rows_with_errors": 10,
+    "row_pass_rate": 95.0,
+    "errors": 11,
+    "warnings": 1,
+    "by_rule": {
+      "required": 1,
+      "pattern": 1,
+      "type": 2,
+      "min": 1,
+      "max": 1,
+      "allowed": 2,
+      "unique": 2,
+      "duplicate_row": 1,
+      "column_count": 1
+    },
+    "by_column": {
+      "customer_email": 2,
+      "order_date": 1,
+      "amount": 3,
+      "status": 1,
+      "region": 1,
+      "order_id": 2,
+      "(dataset)": 2
+    }
+  },
+  "issues": [
+    {
+      "row": 5,
+      "column": "customer_email",
+      "rule": "required",
+      "value": "",
+      "message": "value is missing",
+      "severity": "error"
+    },
+    {
+      "row": 12,
+      "column": "customer_email",
+      "rule": "pattern",
+      "value": "not-an-email",
+      "message": "'not-an-email' does not match the required pattern",
+      "severity": "error"
+    },
+    {
+      "row": 17,
+      "column": "order_date",
+      "rule": "type",
+      "value": "2026-13-45",
+      "message": "'2026-13-45' is not a valid date",
+      "severity": "error"
+    },
+    {
+      "row": 24,
+      "column": "amount",
+      "rule": "min",
+      "value": "-12.50",
+      "message": "-12.50 is below the minimum of 0",
+      "severity": "error"
+    },
+    {
+      "row": 32,
+      "column": "amount",
+      "rule": "max",
+      "value": "99999",
+      "message": "99999 is above the maximum of 10000",
+      "severity": "error"
+    },
+    {
+      "row": 43,
+      "column": "status",
+      "rule": "allowed",
+      "value": "shiped",
+      "message": "'shiped' is not one of ['pending', 'shipped', 'delivered', 'cancelled']",
+      "severity": "error"
+    },
+    {
+      "row": 52,
+      "column": "region",
+      "rule": "allowed",
+      "value": "Mars",
+      "message": "'Mars' is not one of ['Midwest', 'Northeast', 'South', 'West']",
+      "severity": "warning"
+    },
+    {
+      "row": 62,
+      "column": "order_id",
+      "rule": "unique",
+      "value": "1059",
+      "message": "'1059' already appears on line 61",
+      "severity": "error"
+    },
+    {
+      "row": 72,
+      "column": "amount",
+      "rule": "type",
+      "value": "abc",
+      "message": "'abc' is not a valid float",
+      "severity": "error"
+    },
+    {
+      "row": 202,
+      "column": "order_id",
+      "rule": "unique",
+      "value": "1080",
+      "message": "'1080' already appears on line 82",
+      "severity": "error"
+    },
+    {
+      "row": 202,
+      "column": null,
+      "rule": "duplicate_row",
+      "value": null,
+      "message": "row is identical to line 82",
+      "severity": "error"
+    },
+    {
+      "row": 203,
+      "column": null,
+      "rule": "column_count",
+      "value": 2,
+      "message": "row has 2 fields, expected 6",
+      "severity": "error"
+    }
+  ]
+}

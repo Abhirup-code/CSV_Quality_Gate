@@ -1,0 +1,26 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q
+      - name: Clean sample should pass
+        run: python -m qualitygate examples/orders_clean.csv --rules examples/orders_rules.json --out reports/clean
+      - name: Dirty sample should fail with exit code 1
+        run: |
+          code=0
+          python -m qualitygate examples/orders_dirty.csv --rules examples/orders_rules.json --out reports/dirty || code=$?
+          test "$code" -eq 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sample-reports
+          path: reports/
