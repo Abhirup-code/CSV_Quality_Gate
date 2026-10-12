@@ -51,3 +51,12 @@ def test_fail_on_warning(tmp_path):
     args = [str(csv_path), "--rules", RULES, "--out", str(tmp_path / "o")]
     assert main(args) == 0
     assert main(args + ["--fail-on-warning"]) == 1
+
+
+def test_version_flag(capsys):
+    import pytest
+
+    with pytest.raises(SystemExit) as exc:
+        main(["--version"])
+    assert exc.value.code == 0
+    assert "1.0.0" in capsys.readouterr().out

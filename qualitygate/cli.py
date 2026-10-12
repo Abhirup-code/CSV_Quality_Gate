@@ -4,6 +4,7 @@ import json
 import sys
 from pathlib import Path
 
+from . import __version__
 from .checks import read_csv, run_checks
 from .report import summarize, to_markdown
 from .rules import RulesError, load_rules
@@ -14,6 +15,7 @@ def build_parser():
     p.add_argument("csv_path", help="CSV file to check")
     p.add_argument("--rules", required=True, help="JSON rules file")
     p.add_argument("--out", default="reports", help="folder for report.json and report.md")
+    p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     p.add_argument("--fail-on-warning", action="store_true", help="exit 1 if there are warnings too")
     return p
 
