@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .checks import read_csv, run_checks
 from .infer import infer_rules
+from .quarantine import write_quarantine
 from .report import summarize, to_markdown
 from .rules import RulesError, load_rules
 
@@ -17,6 +18,8 @@ def build_parser():
     p.add_argument("--rules", required=True, help="JSON rules file")
     p.add_argument("--out", default="reports", help="folder for report.json and report.md")
     p.add_argument("--fail-on-warning", action="store_true", help="exit 1 if there are warnings too")
+    p.add_argument("--quarantine", metavar="FOLDER",
+                   help="also write passed.csv (rows with no errors) and failed.csv (the rest, with reasons)")
     return p
 
 
@@ -71,6 +74,9 @@ def main(argv=None):
     print(f"{summary['status']}: {summary['total_rows']} rows, "
           f"{summary['errors']} errors, {summary['warnings']} warnings "
           f"(row pass rate {summary['row_pass_rate']}%). Reports in {out}/")
+    if args.quarantine:
+        good, bad = write_quarantine(args.quarantine, header, rows, issues)
+        print(f"Quarantine: {good} rows in passed.csv, {bad} rows in failed.csv ({args.quarantine}/)")
 
     if summary["errors"] or (args.fail_on_warning and summary["warnings"]):
         return 1
