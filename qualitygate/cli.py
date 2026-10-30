@@ -7,7 +7,7 @@ from pathlib import Path
 from .checks import read_csv, run_checks
 from .infer import infer_rules
 from .quarantine import write_quarantine
-from .report import summarize, to_markdown
+from .report import summarize, to_junit, to_markdown
 from .rules import RulesError, load_rules
 
 
@@ -20,6 +20,7 @@ def build_parser():
     p.add_argument("--fail-on-warning", action="store_true", help="exit 1 if there are warnings too")
     p.add_argument("--quarantine", metavar="FOLDER",
                    help="also write passed.csv (rows with no errors) and failed.csv (the rest, with reasons)")
+    p.add_argument("--junit", metavar="FILE", help="also write a JUnit XML test report for CI")
     return p
 
 
@@ -70,6 +71,9 @@ def main(argv=None):
     out.mkdir(parents=True, exist_ok=True)
     (out / "report.json").write_text(json.dumps({"summary": summary, "issues": issues}, indent=2))
     (out / "report.md").write_text(to_markdown(summary, issues))
+    if args.junit:
+        Path(args.junit).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.junit).write_text(to_junit(summary, issues, rules["columns"]), encoding="utf-8")
 
     print(f"{summary['status']}: {summary['total_rows']} rows, "
           f"{summary['errors']} errors, {summary['warnings']} warnings "

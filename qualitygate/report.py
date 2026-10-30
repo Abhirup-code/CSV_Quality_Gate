@@ -1,4 +1,5 @@
 """Summaries and report formats."""
+import xml.etree.ElementTree as ET
 from collections import Counter
 
 
@@ -58,3 +59,37 @@ def to_markdown(summary, issues, examples_per_rule=5):
             lines.append(f"- ...and {extra} more")
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
+
+
+def to_junit(summary, issues, columns):
+    """JUnit XML, the test report format that GitHub Actions, Jenkins, and Azure DevOps display.
+
+    Each rules column is one test case, plus one for file-wide checks. Errors make it fail;
+    warnings are listed in its output without failing it.
+    """
+    names = list(columns) + ["(dataset)"]
+    by_column = {name: [] for name in names}
+    for issue in issues:
+        by_column.setdefault(issue["column"] or "(dataset)", []).append(issue)
+
+    suite_name = f"qualitygate: {summary['source'] or summary['rules']}"
+    suite = ET.Element("testsuite", name=suite_name, tests=str(len(by_column)))
+    failures = 0
+    for name, found in by_column.items():
+        case = ET.SubElement(suite, "testcase", classname=suite_name, name=name)
+        errors = [i for i in found if i["severity"] == "error"]
+        if errors:
+            failures += 1
+            failure = ET.SubElement(case, "failure", message=f"{len(errors)} data quality error(s)", type="error")
+            failure.text = "\n".join(_where(i) + i["message"] for i in errors)
+        warnings = [i for i in found if i["severity"] == "warning"]
+        if warnings:
+            ET.SubElement(case, "system-out").text = "\n".join("warning: " + _where(i) + i["message"]
+                                                                 for i in warnings)
+    suite.set("failures", str(failures))
+    ET.indent(suite)
+    return ET.tostring(suite, encoding="unicode", xml_declaration=True) + "\n"
+
+
+def _where(issue):
+    return f"line {issue['row']}: " if issue["row"] else "file: "
