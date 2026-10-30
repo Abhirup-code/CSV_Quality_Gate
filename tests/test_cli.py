@@ -51,3 +51,25 @@ def test_fail_on_warning(tmp_path):
     args = [str(csv_path), "--rules", RULES, "--out", str(tmp_path / "o")]
     assert main(args) == 0
     assert main(args + ["--fail-on-warning"]) == 1
+
+
+def test_infer_prints_rules_the_clean_file_passes(tmp_path, capsys):
+    assert main(["infer", str(EX / "orders_clean.csv")]) == 0
+    rules = json.loads(capsys.readouterr().out)
+    assert rules["name"] == "orders_clean" and rules["columns"]["order_id"]["unique"] is True
+    rules_path = tmp_path / "rules.json"
+    rules_path.write_text(json.dumps(rules))
+    code = main([str(EX / "orders_clean.csv"), "--rules", str(rules_path), "--out", str(tmp_path / "r")])
+    assert code == 0
+
+
+def test_infer_writes_a_file_with_a_chosen_name(tmp_path, capsys):
+    out = tmp_path / "orders.json"
+    assert main(["infer", str(EX / "orders_clean.csv"), "--out", str(out), "--name", "orders"]) == 0
+    assert json.loads(out.read_text())["name"] == "orders"
+    assert "Review them before use" in capsys.readouterr().err
+
+
+def test_infer_reports_a_missing_file(tmp_path, capsys):
+    assert main(["infer", str(tmp_path / "nope.csv")]) == 2
+    assert capsys.readouterr().err.startswith("error:")
