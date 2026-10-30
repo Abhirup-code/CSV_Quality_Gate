@@ -73,3 +73,16 @@ def test_infer_writes_a_file_with_a_chosen_name(tmp_path, capsys):
 def test_infer_reports_a_missing_file(tmp_path, capsys):
     assert main(["infer", str(tmp_path / "nope.csv")]) == 2
     assert capsys.readouterr().err.startswith("error:")
+
+
+def test_infer_creates_the_output_folder(tmp_path):
+    out = tmp_path / "new" / "folder" / "rules.json"
+    assert main(["infer", str(EX / "orders_clean.csv"), "--out", str(out)]) == 0
+    assert json.loads(out.read_text())["columns"]
+
+
+def test_infer_reports_an_output_path_it_cannot_write(tmp_path, capsys):
+    blocker = tmp_path / "file"
+    blocker.write_text("x")
+    assert main(["infer", str(EX / "orders_clean.csv"), "--out", str(blocker / "rules.json")]) == 2
+    assert capsys.readouterr().err.startswith("error:")

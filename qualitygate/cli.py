@@ -43,7 +43,12 @@ def infer_main(argv):
     rules = infer_rules(header, rows, name=args.name or Path(args.csv_path).stem)
     text = json.dumps(rules, indent=2) + "\n"
     if args.out:
-        Path(args.out).write_text(text)
+        try:
+            Path(args.out).parent.mkdir(parents=True, exist_ok=True)
+            Path(args.out).write_text(text, encoding="utf-8")
+        except OSError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
         print(f"Wrote draft rules for {len(rules['columns'])} columns to {args.out}. Review them before use.",
               file=sys.stderr)
     else:
