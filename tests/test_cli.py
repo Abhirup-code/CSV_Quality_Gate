@@ -86,3 +86,10 @@ def test_infer_reports_an_output_path_it_cannot_write(tmp_path, capsys):
     blocker.write_text("x")
     assert main(["infer", str(EX / "orders_clean.csv"), "--out", str(blocker / "rules.json")]) == 2
     assert capsys.readouterr().err.startswith("error:")
+
+
+def test_version(capsys):
+    import pytest
+    with pytest.raises(SystemExit) as exc:
+        main(["--version"])
+    assert exc.value.code == 0 and capsys.readouterr().out.strip() == "qualitygate 1.1.0"

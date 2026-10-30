@@ -4,6 +4,7 @@ import json
 import sys
 from pathlib import Path
 
+from . import __version__
 from .checks import read_csv, run_checks
 from .infer import infer_rules
 from .quarantine import write_quarantine
@@ -21,6 +22,7 @@ def build_parser():
     p.add_argument("--quarantine", metavar="FOLDER",
                    help="also write passed.csv (rows with no errors) and failed.csv (the rest, with reasons)")
     p.add_argument("--junit", metavar="FILE", help="also write a JUnit XML test report for CI")
+    p.add_argument("--version", action="version", version=f"qualitygate {__version__}")
     return p
 
 
