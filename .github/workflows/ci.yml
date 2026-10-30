@@ -27,6 +27,20 @@ jobs:
           code=0
           python -m qualitygate examples/orders_dirty.csv --rules examples/orders_rules.json --out reports/dirty || code=$?
           test "$code" -eq 1
+      - name: Rules inferred from the clean sample pass it, and still catch the dirty one
+        run: |
+          python -m qualitygate infer examples/orders_clean.csv --out reports/inferred_rules.json
+          python -m qualitygate examples/orders_clean.csv --rules reports/inferred_rules.json --out reports/inferred-clean
+          code=0
+          python -m qualitygate examples/orders_dirty.csv --rules reports/inferred_rules.json --out reports/inferred-dirty || code=$?
+          test "$code" -eq 1
+      - name: Quarantine and JUnit report for the dirty sample
+        run: |
+          code=0
+          python -m qualitygate examples/orders_dirty.csv --rules examples/orders_rules.json --out reports/quarantine \
+            --quarantine reports/quarantine --junit reports/junit.xml || code=$?
+          test "$code" -eq 1
+          test "$(wc -l < reports/quarantine/failed.csv)" -eq 11
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: sample-reports
