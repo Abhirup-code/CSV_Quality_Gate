@@ -12,6 +12,16 @@ from .report import summarize, to_junit, to_markdown
 from .rules import RulesError, load_rules
 
 
+def percentage(text):
+    try:
+        value = float(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"'{text}' is not a number") from None
+    if not 0 <= value <= 100:
+        raise argparse.ArgumentTypeError("must be between 0 and 100")
+    return value
+
+
 def build_parser():
     p = argparse.ArgumentParser(prog="qualitygate", description="Check a CSV file against data quality rules.",
                                 epilog="To draft a rules file from a good CSV: qualitygate infer FILE.csv")
@@ -19,6 +29,8 @@ def build_parser():
     p.add_argument("--rules", required=True, help="JSON rules file")
     p.add_argument("--out", default="reports", help="folder for report.json and report.md")
     p.add_argument("--fail-on-warning", action="store_true", help="exit 1 if there are warnings too")
+    p.add_argument("--max-error-rate", type=percentage, metavar="PERCENT",
+                   help="pass if at most this percentage of rows have errors (file-wide errors still fail)")
     p.add_argument("--quarantine", metavar="FOLDER",
                    help="also write passed.csv (rows with no errors) and failed.csv (the rest, with reasons)")
     p.add_argument("--junit", metavar="FILE", help="also write a JUnit XML test report for CI")
@@ -72,7 +84,8 @@ def main(argv=None):
 
     issues = run_checks(header, rows, rules)
     summary = summarize(issues, len(rows), source=Path(args.csv_path).name,
-                        rules_name=rules.get("name", Path(args.rules).stem))
+                        rules_name=rules.get("name", Path(args.rules).stem),
+                        max_error_rate=args.max_error_rate)
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -89,7 +102,7 @@ def main(argv=None):
         good, bad = write_quarantine(args.quarantine, header, rows, issues)
         print(f"Quarantine: {good} rows in passed.csv, {bad} rows in failed.csv ({args.quarantine}/)")
 
-    if summary["errors"] or (args.fail_on_warning and summary["warnings"]):
+    if summary["status"] == "FAIL" or (args.fail_on_warning and summary["warnings"]):
         return 1
     return 0
 

@@ -3,15 +3,27 @@ import xml.etree.ElementTree as ET
 from collections import Counter
 
 
-def summarize(issues, total_rows, source="", rules_name=""):
+def summarize(issues, total_rows, source="", rules_name="", max_error_rate=None):
+    """Counts for a run. With max_error_rate (a percentage), row errors up to that share of rows are
+    tolerated; file-wide errors such as a missing column always fail."""
     errors = [i for i in issues if i["severity"] == "error"]
     warnings = [i for i in issues if i["severity"] == "warning"]
     bad_rows = {i["row"] for i in errors if i["row"] is not None}
     clean = total_rows - len(bad_rows)
+    error_rate = round(100 * len(bad_rows) / total_rows, 1) if total_rows else 0.0
+    file_errors = any(i["row"] is None for i in errors)
+    if not errors:
+        status = "PASS"
+    elif max_error_rate is not None and not file_errors and 100 * len(bad_rows) <= max_error_rate * total_rows:
+        status = "PASS"
+    else:
+        status = "FAIL"
     return {
         "source": source,
         "rules": rules_name,
-        "status": "FAIL" if errors else "PASS",
+        "status": status,
+        "max_error_rate": max_error_rate,
+        "row_error_rate": error_rate,
         "total_rows": total_rows,
         "rows_with_errors": len(bad_rows),
         "row_pass_rate": round(100 * clean / total_rows, 1) if total_rows else 100.0,
@@ -27,7 +39,9 @@ def to_markdown(summary, issues, examples_per_rule=5):
         "# Data Quality Report", "",
         f"- **Source:** {summary['source']}",
         f"- **Rules:** {summary['rules']}",
-        f"- **Status:** {summary['status']}",
+        f"- **Status:** {summary['status']}" + (
+            f" (up to {summary['max_error_rate']}% of rows may have errors)"
+            if summary.get("max_error_rate") is not None else ""),
         f"- **Rows checked:** {summary['total_rows']}",
         f"- **Rows with errors:** {summary['rows_with_errors']} "
         f"(row pass rate {summary['row_pass_rate']}%)",
