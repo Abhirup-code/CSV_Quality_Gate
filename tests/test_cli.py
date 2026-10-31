@@ -92,4 +92,4 @@ def test_version(capsys):
     import pytest
     with pytest.raises(SystemExit) as exc:
         main(["--version"])
-    assert exc.value.code == 0 and capsys.readouterr().out.strip() == "qualitygate 1.1.0"
+    assert exc.value.code == 0 and capsys.readouterr().out.strip() == "qualitygate 1.2.0"

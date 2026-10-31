@@ -4,6 +4,19 @@ All notable changes to CSV Quality Gate. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] - 2026-10-31
+
+### Added
+- `pip install .` gives a `qualitygate` command.
+- `--max-error-rate PERCENT` passes a run when at most that share of rows have errors. File-wide errors
+  still fail.
+- `compare` dataset rules check two columns in the same row, like `ship_date >= order_date`, using each
+  column's type.
+- `report.html`, a self-contained report with summary cards and example issues, in light or dark mode.
+- A reusable GitHub Action (`action.yml`) that fails on bad data, writes the report into the job summary,
+  and sets `status`, `errors`, and `row-pass-rate` outputs. CI tests the action itself.
+- ruff linting in CI, including security rules.
+
 ## [1.1.0] - 2026-10-30
 
 ### Added

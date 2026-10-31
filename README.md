@@ -23,7 +23,20 @@ It can also draft the rules file for you from a good CSV, split a file into rows
 | `unique` | no repeated values in a column |
 | `severity` | `error` (fails the run) or `warning` (reported only) |
 
-Dataset rules: `min_rows` and `no_duplicate_rows`. It also reports missing columns and rows with the wrong number of fields.
+Dataset rules: `min_rows`, `no_duplicate_rows`, and `compare`. It also reports missing columns and rows with the wrong number of fields.
+
+`compare` checks two columns in the same row, using each column's type, so numbers compare as numbers and dates as dates:
+
+```json
+"dataset": {
+  "compare": [
+    {"left": "ship_date", "op": ">=", "right": "order_date"},
+    {"left": "price", "op": ">", "right": "cost", "severity": "warning"}
+  ]
+}
+```
+
+The operators are `<`, `<=`, `==`, `!=`, `>`, and `>=`.
 
 ## Quick start
 
@@ -42,7 +55,15 @@ pip install .
 qualitygate examples/orders_clean.csv --rules examples/orders_rules.json
 ```
 
-Each run writes `reports/report.json` and `reports/report.md` (change the folder with `--out`).
+Each run writes `reports/report.json`, `reports/report.md`, and `reports/report.html` (change the folder with `--out`). The HTML report is a single file with no scripts, so it can be attached to a ticket or emailed.
+
+## Tolerate a few bad rows
+
+```
+qualitygate data.csv --rules rules.json --max-error-rate 2 --quarantine reports/quarantine
+```
+
+The run passes if at most 2% of rows have errors. File-wide errors, such as a missing column, still fail. Together with `--quarantine`, a pipeline can load the good rows and hold back the rest.
 
 ## Draft a rules file
 
@@ -125,16 +146,17 @@ The step fails on bad data, writes the Markdown report into the job summary, and
 
 ## Tests
 
-60 pytest tests cover rule validation, every check, the reports, inference, quarantine, JUnit output, and the command line. Property-based tests with [Hypothesis](https://hypothesis.readthedocs.io) generate random tables (blanks, NaN, infinity, non-Latin digits, loose dates) and check that any file passes the rules inferred from it and that summary counts always add up.
+93 pytest tests cover rule validation, every check, comparisons, error tolerance, all four report formats, inference, quarantine, and the command line. Property-based tests with [Hypothesis](https://hypothesis.readthedocs.io) generate random tables (blanks, NaN, infinity, non-Latin digits, loose dates) and check that any file passes the rules inferred from it and that summary counts always add up.
 
-GitHub Actions runs everything on every push and pull request, then checks that the clean sample passes, the dirty sample fails, rules inferred from the clean sample still catch the dirty one, and exactly 10 rows land in quarantine. The workflow has a read-only token and every action is pinned to a commit SHA.
+GitHub Actions runs everything on every push and pull request, then checks that the clean sample passes, the dirty sample fails, rules inferred from the clean sample still catch the dirty one, and exactly 10 rows land in quarantine. A separate job runs the reusable action on the samples and checks its outcomes and outputs. ruff lints the code, including security rules, the workflow has a read-only token, and every action is pinned to a commit SHA.
 
 See [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
 
 ## Project layout
 
 ```
-qualitygate/   rules.py, checks.py, report.py (JSON, Markdown, JUnit), infer.py, quarantine.py, cli.py
+qualitygate/   rules.py, checks.py, report.py (JSON, Markdown, HTML, JUnit), infer.py, quarantine.py, cli.py
+action.yml     the reusable GitHub Action
 examples/      rules file and synthetic sample data
 tests/         pytest and Hypothesis tests
 docs/          sample report
