@@ -5,7 +5,9 @@ import re
 VALID_TYPES = {"string", "int", "float", "date"}
 COLUMN_KEYS = {"type", "required", "unique", "min", "max", "allowed",
                "pattern", "format", "max_length", "severity"}
-DATASET_KEYS = {"min_rows", "no_duplicate_rows"}
+DATASET_KEYS = {"min_rows", "no_duplicate_rows", "compare"}
+COMPARE_OPS = {"<", "<=", "==", "!=", ">", ">="}
+COMPARE_KEYS = {"left", "op", "right", "severity"}
 SEVERITIES = {"error", "warning"}
 
 
@@ -42,7 +44,36 @@ def validate_rules(rules):
     unknown = set(rules.get("dataset", {})) - DATASET_KEYS
     if unknown:
         raise RulesError(f"dataset: unknown rule(s) {sorted(unknown)}")
+    validate_compare(rules.get("dataset", {}).get("compare", []), columns)
     return rules
+
+
+def _kind(spec):
+    col_type = spec.get("type", "string")
+    return "number" if col_type in {"int", "float"} else col_type
+
+
+def validate_compare(comparisons, columns):
+    """Each comparison names two columns of the same kind and one of the six operators."""
+    if not isinstance(comparisons, list):
+        raise RulesError("dataset: 'compare' must be a list")
+    for n, item in enumerate(comparisons, start=1):
+        where = f"compare #{n}"
+        if not isinstance(item, dict):
+            raise RulesError(f"{where}: must be an object")
+        unknown = set(item) - COMPARE_KEYS
+        if unknown:
+            raise RulesError(f"{where}: unknown key(s) {sorted(unknown)}")
+        for side in ("left", "right"):
+            if item.get(side) not in columns:
+                raise RulesError(f"{where}: '{side}' must name a column in the rules")
+        if item.get("op") not in COMPARE_OPS:
+            raise RulesError(f"{where}: 'op' must be one of {sorted(COMPARE_OPS)}")
+        if item.get("severity", "error") not in SEVERITIES:
+            raise RulesError(f"{where}: severity must be 'error' or 'warning'")
+        left, right = columns[item["left"]], columns[item["right"]]
+        if _kind(left) != _kind(right):
+            raise RulesError(f"{where}: '{item['left']}' and '{item['right']}' have different types")
 
 
 def load_rules(path):

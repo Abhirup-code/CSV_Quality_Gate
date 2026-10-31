@@ -2,7 +2,11 @@
 import csv
 import datetime as dt
 import math
+import operator
 import re
+
+OPERATORS = {"<": operator.lt, "<=": operator.le, "==": operator.eq,
+             "!=": operator.ne, ">": operator.gt, ">=": operator.ge}
 
 
 def read_csv(path):
@@ -102,6 +106,12 @@ def run_checks(header, rows, rules):
                     issues.append(_issue(line, name, "unique", value,
                                          f"'{value}' already appears on line {first}", severity))
 
+        for item in dataset.get("compare", []):
+            problem = compare_cells(cells, index, columns, item)
+            if problem:
+                issues.append(_issue(line, item["left"], "compare", cells[index[item["left"]]].strip(),
+                                     problem, item.get("severity", "error")))
+
         if dataset.get("no_duplicate_rows"):
             key = tuple(c.strip() for c in cells)
             first = seen_rows.get(key)
@@ -111,3 +121,24 @@ def run_checks(header, rows, rules):
                 issues.append(_issue(line, None, "duplicate_row", None,
                                      f"row is identical to line {first}", "error"))
     return issues
+
+
+def compare_cells(cells, index, columns, item):
+    """A message if the row breaks a comparison like ship_date >= order_date, else None.
+
+    A blank or unreadable value is skipped here: the column's own rules report it.
+    """
+    left, right = item["left"], item["right"]
+    if left not in index or right not in index:
+        return None
+    raw_left, raw_right = cells[index[left]].strip(), cells[index[right]].strip()
+    if not raw_left or not raw_right:
+        return None
+    try:
+        a = parse_value(raw_left, columns[left].get("type", "string"), columns[left].get("format"))
+        b = parse_value(raw_right, columns[right].get("type", "string"), columns[right].get("format"))
+    except ValueError:
+        return None
+    if OPERATORS[item["op"]](a, b):
+        return None
+    return f"{left} {raw_left} is not {item['op']} {right} {raw_right}"
