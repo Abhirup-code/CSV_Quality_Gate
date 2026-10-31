@@ -58,6 +58,14 @@ qualitygate examples/orders_clean.csv --rules examples/orders_rules.json
 
 Each run writes `reports/report.json`, `reports/report.md`, and `reports/report.html` (change the folder with `--out`). The HTML report is a single file with no scripts, so it can be attached to a ticket or emailed.
 
+## Check many files at once
+
+```
+qualitygate exports/*.csv --rules rules.json --out reports
+```
+
+Each file is checked with the same rules and gets its own report folder, named after the file. The run fails if any file fails, and `--junit` writes one test suite per file.
+
 ## Tolerate a few bad rows
 
 ```

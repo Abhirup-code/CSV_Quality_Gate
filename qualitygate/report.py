@@ -76,12 +76,7 @@ def to_markdown(summary, issues, examples_per_rule=5):
     return "\n".join(lines).rstrip() + "\n"
 
 
-def to_junit(summary, issues, columns):
-    """JUnit XML, the test report format that GitHub Actions, Jenkins, and Azure DevOps display.
-
-    Each rules column is one test case, plus one for file-wide checks. Errors make it fail;
-    warnings are listed in its output without failing it.
-    """
+def _junit_suite(summary, issues, columns):
     names = list(columns) + ["(dataset)"]
     by_column = {name: [] for name in names}
     for issue in issues:
@@ -102,8 +97,33 @@ def to_junit(summary, issues, columns):
             ET.SubElement(case, "system-out").text = "\n".join("warning: " + _where(i) + i["message"]
                                                                  for i in warnings)
     suite.set("failures", str(failures))
-    ET.indent(suite)
-    return ET.tostring(suite, encoding="unicode", xml_declaration=True) + "\n"
+    return suite
+
+
+def _xml(element):
+    ET.indent(element)
+    return ET.tostring(element, encoding="unicode", xml_declaration=True) + "\n"
+
+
+def to_junit(summary, issues, columns):
+    """JUnit XML, the test report format that GitHub Actions, Jenkins, and Azure DevOps display.
+
+    Each rules column is one test case, plus one for file-wide checks. Errors make it fail;
+    warnings are listed in its output without failing it.
+    """
+    return _xml(_junit_suite(summary, issues, columns))
+
+
+def to_junit_files(results, columns):
+    """JUnit XML for one file, or a <testsuites> with one suite per file when there are several."""
+    if len(results) == 1:
+        return to_junit(*results[0], columns)
+    suites = ET.Element("testsuites", name="qualitygate")
+    for summary, issues in results:
+        suites.append(_junit_suite(summary, issues, columns))
+    suites.set("tests", str(sum(int(s.get("tests")) for s in suites)))
+    suites.set("failures", str(sum(int(s.get("failures")) for s in suites)))
+    return _xml(suites)
 
 
 def _where(issue):
