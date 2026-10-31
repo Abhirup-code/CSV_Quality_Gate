@@ -25,3 +25,15 @@ packages = ["qualitygate"]
 
 [tool.setuptools.dynamic]
 version = { attr = "qualitygate.__version__" }
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S"]
+ignore = ["E731"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "S314"]  # asserts, and parsing XML this tool wrote itself
+"examples/*" = ["S311"]
