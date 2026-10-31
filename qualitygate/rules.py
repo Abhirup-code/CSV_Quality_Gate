@@ -5,7 +5,7 @@ import re
 
 VALID_TYPES = {"string", "int", "float", "date"}
 COLUMN_KEYS = {"type", "required", "unique", "min", "max", "allowed",
-               "pattern", "format", "max_length", "severity"}
+               "pattern", "format", "max_length", "severity", "max_blank_rate"}
 DATASET_KEYS = {"min_rows", "no_duplicate_rows", "compare"}
 COMPARE_OPS = {"<", "<=", "==", "!=", ">", ">="}
 COMPARE_KEYS = {"left", "op", "right", "severity"}
@@ -34,6 +34,10 @@ def validate_rules(rules):
             raise RulesError(f"column '{name}': type must be one of {sorted(VALID_TYPES)}")
         if spec.get("severity", "error") not in SEVERITIES:
             raise RulesError(f"column '{name}': severity must be 'error' or 'warning'")
+        if "max_blank_rate" in spec:
+            rate = spec["max_blank_rate"]
+            if isinstance(rate, bool) or not isinstance(rate, (int, float)) or not 0 <= rate <= 100:
+                raise RulesError(f"column '{name}': max_blank_rate must be a percentage from 0 to 100")
         for bound in ("min", "max"):
             if bound in spec:
                 _check_bound(name, bound, spec[bound], col_type, spec.get("format"))

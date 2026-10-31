@@ -98,6 +98,8 @@ def run_checks(header, rows, rules):
                              "error"))
 
     seen_unique = {name: {} for name, s in columns.items() if s.get("unique")}
+    blanks = {name: 0 for name, s in columns.items() if "max_blank_rate" in s and name in index}
+    well_formed = 0
     seen_rows = {}
 
     for line, cells in rows:
@@ -105,6 +107,10 @@ def run_checks(header, rows, rules):
             issues.append(_issue(line, None, "column_count", len(cells),
                                  f"row has {len(cells)} fields, expected {len(header)}", "error"))
             continue
+        well_formed += 1
+        for name in blanks:
+            if not cells[index[name]].strip():
+                blanks[name] += 1
 
         for name, spec in columns.items():
             if name not in index:
@@ -136,6 +142,14 @@ def run_checks(header, rows, rules):
             else:
                 issues.append(_issue(line, None, "duplicate_row", None,
                                      f"row is identical to line {first}", "error"))
+
+    for name, count in blanks.items():
+        limit = columns[name]["max_blank_rate"]
+        if well_formed and 100 * count > limit * well_formed:
+            rate = round(100 * count / well_formed, 1)
+            issues.append(_issue(None, name, "max_blank_rate", rate,
+                                 f"{rate}% of values are blank ({count} of {well_formed}), "
+                                 f"more than the allowed {limit}%", columns[name].get("severity", "error")))
     return issues
 
 

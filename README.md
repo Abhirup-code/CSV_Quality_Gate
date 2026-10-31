@@ -21,6 +21,7 @@ It can also draft the rules file for you from a good CSV, split a file into rows
 | `pattern` | value must fully match a regular expression |
 | `max_length` | text length limit |
 | `unique` | no repeated values in a column |
+| `max_blank_rate` | at most this percentage of the column may be blank, for columns that are optional but should usually be filled |
 | `severity` | `error` (fails the run) or `warning` (reported only) |
 
 Dataset rules: `min_rows`, `no_duplicate_rows`, and `compare`. It also reports missing columns and rows with the wrong number of fields.
