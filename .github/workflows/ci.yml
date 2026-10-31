@@ -20,6 +20,10 @@ jobs:
           python-version: "3.11"
       - run: pip install -r requirements.txt
       - run: python -m pytest -q
+      - name: Installs as a package with a qualitygate command
+        run: |
+          pip install .
+          qualitygate --version
       - name: Clean sample should pass
         run: python -m qualitygate examples/orders_clean.csv --rules examples/orders_rules.json --out reports/clean
       - name: Dirty sample should fail with exit code 1

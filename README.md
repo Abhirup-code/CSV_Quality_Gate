@@ -35,6 +35,13 @@ python -m qualitygate examples/orders_clean.csv --rules examples/orders_rules.js
 python -m qualitygate examples/orders_dirty.csv --rules examples/orders_rules.json
 ```
 
+To use it as a command anywhere, install the package:
+
+```
+pip install .
+qualitygate examples/orders_clean.csv --rules examples/orders_rules.json
+```
+
 Each run writes `reports/report.json` and `reports/report.md` (change the folder with `--out`).
 
 ## Draft a rules file

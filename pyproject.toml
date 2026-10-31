@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "csv-quality-gate"
+dynamic = ["version"]
+description = "A rules-driven quality gate for CSV files, with reports for people and CI."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Abhirup Khan" }]
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest", "hypothesis"]
+
+[project.scripts]
+qualitygate = "qualitygate.cli:main"
+
+[project.urls]
+Source = "https://github.com/Abhirup-code/CSV_Quality_Gate"
+
+[tool.setuptools]
+packages = ["qualitygate"]
+
+[tool.setuptools.dynamic]
+version = { attr = "qualitygate.__version__" }
