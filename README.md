@@ -136,7 +136,7 @@ The full report is in [`docs/sample/report.md`](docs/sample/report.md).
 This repo is also a GitHub Action. Add a step to any workflow:
 
 ```yaml
-- uses: Abhirup-code/CSV_Quality_Gate@v1.2.0
+- uses: Abhirup-code/CSV_Quality_Gate@v1.3.0
   with:
     csv: data/orders.csv
     rules: data/orders_rules.json
@@ -157,7 +157,7 @@ The step fails on bad data, writes the Markdown report into the job summary, and
 
 ## Tests
 
-93 pytest tests cover rule validation, every check, comparisons, error tolerance, all four report formats, inference, quarantine, and the command line. Property-based tests with [Hypothesis](https://hypothesis.readthedocs.io) generate random tables (blanks, NaN, infinity, non-Latin digits, loose dates) and check that any file passes the rules inferred from it and that summary counts always add up.
+129 pytest tests cover rule validation, every check, comparisons, date ranges, blank limits, error tolerance, all four report formats, inference, quarantine, other separators, Excel files, several files per run, and the command line. Property-based tests with [Hypothesis](https://hypothesis.readthedocs.io) generate random tables (blanks, NaN, infinity, non-Latin digits, loose dates) and check that any file passes the rules inferred from it and that summary counts always add up.
 
 GitHub Actions runs everything on every push and pull request, then checks that the clean sample passes, the dirty sample fails, rules inferred from the clean sample still catch the dirty one, and exactly 10 rows land in quarantine. A separate job runs the reusable action on the samples and checks its outcomes and outputs. ruff lints the code, including security rules, the workflow has a read-only token, and every action is pinned to a commit SHA.
 

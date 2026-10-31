@@ -4,6 +4,22 @@ All notable changes to CSV Quality Gate. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [1.3.0] - 2026-10-31
+
+### Added
+- Check several files with the same rules in one run, each with its own report folder; `--junit` writes
+  one test suite per file.
+- `--delimiter` for semicolon, tab, and pipe separated files, in checks, inference, quarantine, and the
+  GitHub Action.
+- `min` and `max` for date columns, and `"max": "today"` to catch dates in the future.
+- `max_blank_rate`, a limit on how much of a column may be blank.
+
+### Fixed
+- Files saved by Excel as "CSV UTF-8" start with an invisible byte-order mark, which made the first
+  column look missing. They are now read correctly.
+- A rules file with a text bound such as `"min": "5"` on a number column crashed the check. It is now
+  rejected with a clear message when the rules load.
+
 ## [1.2.0] - 2026-10-31
 
 ### Added
