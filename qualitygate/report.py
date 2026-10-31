@@ -1,4 +1,5 @@
 """Summaries and report formats."""
+import html
 import xml.etree.ElementTree as ET
 from collections import Counter
 
@@ -107,3 +108,68 @@ def to_junit(summary, issues, columns):
 
 def _where(issue):
     return f"line {issue['row']}: " if issue["row"] else "file: "
+
+
+_STYLE = """
+:root { color-scheme: light dark; --bg: #f7f7f5; --card: #fff; --text: #1d1f21; --muted: #5b6168;
+  --line: #dcdfe3; --pass: #1d7a46; --fail: #b3261e; --warn: #8a4b00; }
+@media (prefers-color-scheme: dark) { :root { --bg: #15171a; --card: #1e2124; --text: #eceff1;
+  --muted: #a7afb7; --line: #343a40; --pass: #6fd29b; --fail: #ff8a80; --warn: #ffb36b; } }
+body { margin: 0 auto; max-width: 960px; padding: 1.5rem 1rem; background: var(--bg); color: var(--text);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+h1 { margin: 0 0 .25rem; } .muted { color: var(--muted); }
+.status { font-size: 1.6rem; font-weight: 800; } .PASS { color: var(--pass); } .FAIL { color: var(--fail); }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .75rem; margin: 1rem 0; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: .75rem; }
+.card b { display: block; font-size: 1.4rem; }
+table { border-collapse: collapse; width: 100%; background: var(--card); margin-bottom: 1rem; }
+th, td { text-align: left; padding: .4rem .6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+.error { color: var(--fail); font-weight: 700; } .warning { color: var(--warn); font-weight: 700; }
+"""
+
+
+def to_html(summary, issues, examples_per_rule=25):
+    """A self-contained HTML page: no scripts or outside files, and every value escaped."""
+    e = lambda value: html.escape(str(value))  # noqa: E731
+    title = f"Data quality: {summary['source'] or summary['rules']}"
+    tolerance = (f" (up to {e(summary['max_error_rate'])}% of rows may have errors)"
+                 if summary.get("max_error_rate") is not None else "")
+    cards = [("Rows checked", summary["total_rows"]), ("Rows with errors", summary["rows_with_errors"]),
+             ("Row pass rate", f"{summary['row_pass_rate']}%"), ("Errors", summary["errors"]),
+             ("Warnings", summary["warnings"])]
+    parts = [
+        "<!doctype html>", '<html lang="en">', "<head>", '<meta charset="utf-8">',
+        '<meta name="viewport" content="width=device-width, initial-scale=1">',
+        f"<title>{e(title)}</title>", f"<style>{_STYLE}</style>", "</head>", "<body>",
+        f"<h1>{e(title)}</h1>",
+        f'<p class="muted">Rules: {e(summary["rules"])}</p>',
+        f'<p class="status {e(summary["status"])}">{e(summary["status"])}{tolerance}</p>',
+        '<div class="cards">',
+        *(f'<div class="card"><span class="muted">{e(label)}</span><b>{e(value)}</b></div>' for label, value in cards),
+        "</div>",
+    ]
+    if not issues:
+        parts.append("<p>No issues found.</p>")
+    else:
+        for heading, key in (("Issues by rule", "by_rule"), ("Issues by column", "by_column")):
+            parts += [f"<h2>{heading}</h2>", "<table><thead><tr><th>Name</th><th>Count</th></tr></thead><tbody>"]
+            for name, count in sorted(summary[key].items(), key=lambda kv: (-kv[1], kv[0])):
+                parts.append(f"<tr><td>{e(name)}</td><td>{count}</td></tr>")
+            parts.append("</tbody></table>")
+        parts += ["<h2>Examples</h2>", "<table><thead><tr><th>Where</th><th>Column</th><th>Rule</th>"
+                  "<th>Problem</th><th>Severity</th></tr></thead><tbody>"]
+        shown = Counter()
+        for issue in issues:
+            shown[issue["rule"]] += 1
+            if shown[issue["rule"]] > examples_per_rule:
+                continue
+            where = f"line {issue['row']}" if issue["row"] else "file"
+            parts.append(f"<tr><td>{where}</td><td>{e(issue['column'] or '')}</td><td>{e(issue['rule'])}</td>"
+                         f"<td>{e(issue['message'])}</td><td class=\"{e(issue['severity'])}\">"
+                         f"{e(issue['severity'])}</td></tr>")
+        parts.append("</tbody></table>")
+        hidden = sum(max(0, n - examples_per_rule) for n in shown.values())
+        if hidden:
+            parts.append(f'<p class="muted">{hidden} more issues are in report.json.</p>')
+    parts += ['<p class="muted">Made by CSV Quality Gate.</p>', "</body>", "</html>"]
+    return "\n".join(parts) + "\n"

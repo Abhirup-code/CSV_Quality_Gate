@@ -8,7 +8,7 @@ from . import __version__
 from .checks import read_csv, run_checks
 from .infer import infer_rules
 from .quarantine import write_quarantine
-from .report import summarize, to_junit, to_markdown
+from .report import summarize, to_html, to_junit, to_markdown
 from .rules import RulesError, load_rules
 
 
@@ -27,7 +27,7 @@ def build_parser():
                                 epilog="To draft a rules file from a good CSV: qualitygate infer FILE.csv")
     p.add_argument("csv_path", help="CSV file to check")
     p.add_argument("--rules", required=True, help="JSON rules file")
-    p.add_argument("--out", default="reports", help="folder for report.json and report.md")
+    p.add_argument("--out", default="reports", help="folder for report.json, report.md, and report.html")
     p.add_argument("--fail-on-warning", action="store_true", help="exit 1 if there are warnings too")
     p.add_argument("--max-error-rate", type=percentage, metavar="PERCENT",
                    help="pass if at most this percentage of rows have errors (file-wide errors still fail)")
@@ -91,6 +91,7 @@ def main(argv=None):
     out.mkdir(parents=True, exist_ok=True)
     (out / "report.json").write_text(json.dumps({"summary": summary, "issues": issues}, indent=2))
     (out / "report.md").write_text(to_markdown(summary, issues))
+    (out / "report.html").write_text(to_html(summary, issues), encoding="utf-8")
     if args.junit:
         Path(args.junit).parent.mkdir(parents=True, exist_ok=True)
         Path(args.junit).write_text(to_junit(summary, issues, rules["columns"]), encoding="utf-8")
