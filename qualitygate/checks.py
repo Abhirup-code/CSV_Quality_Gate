@@ -11,7 +11,9 @@ OPERATORS = {"<": operator.lt, "<=": operator.le, "==": operator.eq,
 
 def read_csv(path):
     """Return (header, rows) where rows is a list of (line_number, cells)."""
-    with open(path, newline="", encoding="utf-8") as f:
+    # utf-8-sig drops the invisible byte-order mark Excel puts at the start of "CSV UTF-8" files,
+    # which would otherwise become part of the first column's name.
+    with open(path, newline="", encoding="utf-8-sig") as f:
         reader = csv.reader(f)
         header = next(reader, [])
         rows = [(n, cells) for n, cells in enumerate(reader, start=2) if cells]

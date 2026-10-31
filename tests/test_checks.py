@@ -84,3 +84,12 @@ def test_duplicate_rows_and_min_rows():
 def test_warning_severity_is_carried():
     issues = run_checks(["c"], [(2, ["z"])], rules_of(allowed=["a"], severity="warning"))
     assert issues[0]["severity"] == "warning"
+
+
+def test_reads_a_csv_saved_by_excel_with_a_byte_order_mark(tmp_path):
+    from qualitygate.checks import read_csv, run_checks
+    path = tmp_path / "excel.csv"
+    path.write_bytes(b"\xef\xbb\xbforder_id,amount\r\n1,2\r\n")
+    header, rows = read_csv(path)
+    assert header == ["order_id", "amount"] and rows == [(2, ["1", "2"])]
+    assert run_checks(header, rows, {"columns": {"order_id": {"type": "int", "required": True}}}) == []
