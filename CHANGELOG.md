@@ -16,6 +16,7 @@ All notable changes to CSV Quality Gate. The format follows
 - A reusable GitHub Action (`action.yml`) that fails on bad data, writes the report into the job summary,
   and sets `status`, `errors`, and `row-pass-rate` outputs. CI tests the action itself.
 - ruff linting in CI, including security rules.
+- Licensed under the Apache License 2.0 (`LICENSE` and `NOTICE`).
 
 ## [1.1.0] - 2026-10-30
 

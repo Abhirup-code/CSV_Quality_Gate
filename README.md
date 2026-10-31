@@ -1,6 +1,6 @@
 # CSV Quality Gate
 
-![CI](https://github.com/Abhirup-code/CSV_Quality_Gate/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/Abhirup-code/CSV_Quality_Gate/actions/workflows/ci.yml/badge.svg) [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 A small command-line quality gate for CSV files. It checks a file against a JSON rules file, writes a clear report, and exits with a non-zero code when the data fails, so it can stop a CI pipeline.
 
@@ -163,3 +163,7 @@ docs/          sample report
 ```
 
 
+
+## License
+
+[Apache 2.0](LICENSE). Copyright 2026 Abhirup Khan.
