@@ -136,7 +136,7 @@ The full report is in [`docs/sample/report.md`](docs/sample/report.md).
 This repo is also a GitHub Action. Add a step to any workflow:
 
 ```yaml
-- uses: Abhirup-code/CSV_Quality_Gate@v1.3.0
+- uses: Abhirup-code/CSV_Quality_Gate@v1.3.1
   with:
     csv: data/orders.csv
     rules: data/orders_rules.json

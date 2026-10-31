@@ -1,4 +1,4 @@
-name: CSV Quality Gate
+name: Data Quality Gate for CSV
 description: Check a CSV file against data quality rules, show the report in the job summary, and fail on bad data.
 author: Abhirup Khan
 branding:

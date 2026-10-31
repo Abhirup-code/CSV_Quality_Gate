@@ -4,6 +4,12 @@ All notable changes to CSV Quality Gate. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [1.3.1] - 2026-10-31
+
+### Changed
+- The GitHub Action's display name is now "Data Quality Gate for CSV", because the Marketplace
+  needs a unique name. Workflows that use the Action do not change.
+
 ## [1.3.0] - 2026-10-31
 
 ### Added
