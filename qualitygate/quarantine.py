@@ -16,17 +16,17 @@ def split_rows(rows, issues):
     return passed, failed
 
 
-def write_quarantine(folder, header, rows, issues):
+def write_quarantine(folder, header, rows, issues, delimiter=","):
     """Write passed.csv and failed.csv into folder and return (passed count, failed count)."""
     folder = Path(folder)
     folder.mkdir(parents=True, exist_ok=True)
     passed, failed = split_rows(rows, issues)
     with open(folder / "passed.csv", "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
+        writer = csv.writer(f, delimiter=delimiter)
         writer.writerow(header)
         writer.writerows(passed)
     with open(folder / "failed.csv", "w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f)
+        writer = csv.writer(f, delimiter=delimiter)
         writer.writerow(["_line", "_errors", *header])
         for line, cells, errors in failed:
             writer.writerow([line, errors, *cells])

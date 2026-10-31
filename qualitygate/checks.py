@@ -9,12 +9,12 @@ OPERATORS = {"<": operator.lt, "<=": operator.le, "==": operator.eq,
              "!=": operator.ne, ">": operator.gt, ">=": operator.ge}
 
 
-def read_csv(path):
+def read_csv(path, delimiter=","):
     """Return (header, rows) where rows is a list of (line_number, cells)."""
     # utf-8-sig drops the invisible byte-order mark Excel puts at the start of "CSV UTF-8" files,
     # which would otherwise become part of the first column's name.
     with open(path, newline="", encoding="utf-8-sig") as f:
-        reader = csv.reader(f)
+        reader = csv.reader(f, delimiter=delimiter)
         header = next(reader, [])
         rows = [(n, cells) for n, cells in enumerate(reader, start=2) if cells]
     return [h.strip() for h in header], rows

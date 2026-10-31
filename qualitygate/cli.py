@@ -22,11 +22,23 @@ def percentage(text):
     return value
 
 
+def delimiter(text):
+    """One character, with names for the ones that are awkward to type in a shell."""
+    value = {"tab": "\t", "\\t": "\t", "semicolon": ";", "comma": ",", "pipe": "|"}.get(text, text)
+    if len(value) != 1 or value in "\r\n\"":
+        raise argparse.ArgumentTypeError("must be one character, or tab, semicolon, comma, or pipe")
+    return value
+
+
+DELIMITER_HELP = "field separator: one character, or tab, semicolon, comma, or pipe (default: comma)"
+
+
 def build_parser():
     p = argparse.ArgumentParser(prog="qualitygate", description="Check a CSV file against data quality rules.",
                                 epilog="To draft a rules file from a good CSV: qualitygate infer FILE.csv")
     p.add_argument("csv_path", help="CSV file to check")
     p.add_argument("--rules", required=True, help="JSON rules file")
+    p.add_argument("--delimiter", type=delimiter, default=",", help=DELIMITER_HELP)
     p.add_argument("--out", default="reports", help="folder for report.json, report.md, and report.html")
     p.add_argument("--fail-on-warning", action="store_true", help="exit 1 if there are warnings too")
     p.add_argument("--max-error-rate", type=percentage, metavar="PERCENT",
@@ -44,13 +56,14 @@ def build_infer_parser():
     p.add_argument("csv_path", help="a clean CSV file to learn from")
     p.add_argument("--out", help="write the rules here instead of printing them")
     p.add_argument("--name", help="rules name (default: the file name)")
+    p.add_argument("--delimiter", type=delimiter, default=",", help=DELIMITER_HELP)
     return p
 
 
 def infer_main(argv):
     args = build_infer_parser().parse_args(argv)
     try:
-        header, rows = read_csv(args.csv_path)
+        header, rows = read_csv(args.csv_path, args.delimiter)
     except (OSError, UnicodeDecodeError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
@@ -77,7 +90,7 @@ def main(argv=None):
     args = build_parser().parse_args(argv)
     try:
         rules = load_rules(args.rules)
-        header, rows = read_csv(args.csv_path)
+        header, rows = read_csv(args.csv_path, args.delimiter)
     except (RulesError, OSError, UnicodeDecodeError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
@@ -100,7 +113,7 @@ def main(argv=None):
           f"{summary['errors']} errors, {summary['warnings']} warnings "
           f"(row pass rate {summary['row_pass_rate']}%). Reports in {out}/")
     if args.quarantine:
-        good, bad = write_quarantine(args.quarantine, header, rows, issues)
+        good, bad = write_quarantine(args.quarantine, header, rows, issues, args.delimiter)
         print(f"Quarantine: {good} rows in passed.csv, {bad} rows in failed.csv ({args.quarantine}/)")
 
     if summary["status"] == "FAIL" or (args.fail_on_warning and summary["warnings"]):

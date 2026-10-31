@@ -65,6 +65,8 @@ qualitygate data.csv --rules rules.json --max-error-rate 2 --quarantine reports/
 
 The run passes if at most 2% of rows have errors. File-wide errors, such as a missing column, still fail. Together with `--quarantine`, a pipeline can load the good rows and hold back the rest.
 
+Files separated by semicolons (common from Excel in Europe), tabs, or pipes work with `--delimiter`, for example `--delimiter semicolon` or `--delimiter tab`. Files saved by Excel as "CSV UTF-8" are read correctly too.
+
 ## Draft a rules file
 
 Writing rules by hand is slow. `infer` reads a CSV you trust and drafts them:

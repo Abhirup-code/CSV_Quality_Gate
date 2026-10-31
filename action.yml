@@ -12,6 +12,9 @@ inputs:
   rules:
     description: JSON rules file
     required: true
+  delimiter:
+    description: Field separator, one character or tab, semicolon, comma, or pipe
+    default: ","
   out:
     description: Folder for report.json, report.md, and report.html
     default: qualitygate-report
@@ -58,12 +61,13 @@ runs:
         QG_CSV: ${{ inputs.csv }}
         QG_RULES: ${{ inputs.rules }}
         QG_OUT: ${{ inputs.out }}
+        QG_DELIMITER: ${{ inputs.delimiter }}
         QG_MAX_ERROR_RATE: ${{ inputs.max-error-rate }}
         QG_FAIL_ON_WARNING: ${{ inputs.fail-on-warning }}
         QG_QUARANTINE: ${{ inputs.quarantine }}
         QG_JUNIT: ${{ inputs.junit }}
       run: |
-        args=("$QG_CSV" --rules "$QG_RULES" --out "$QG_OUT")
+        args=("$QG_CSV" --rules "$QG_RULES" --out "$QG_OUT" --delimiter "$QG_DELIMITER")
         [ -n "$QG_MAX_ERROR_RATE" ] && args+=(--max-error-rate "$QG_MAX_ERROR_RATE")
         [ "$QG_FAIL_ON_WARNING" = "true" ] && args+=(--fail-on-warning)
         [ -n "$QG_QUARANTINE" ] && args+=(--quarantine "$QG_QUARANTINE")
