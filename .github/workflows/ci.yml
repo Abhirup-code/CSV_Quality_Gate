@@ -49,3 +49,52 @@ jobs:
         with:
           name: sample-reports
           path: reports/
+
+  action:
+    name: The reusable action passes clean data and fails dirty data
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Clean sample
+        id: clean
+        uses: ./
+        with:
+          csv: examples/orders_clean.csv
+          rules: examples/orders_rules.json
+          out: reports/action-clean
+      - name: Dirty sample (expected to fail)
+        id: dirty
+        continue-on-error: true
+        uses: ./
+        with:
+          csv: examples/orders_dirty.csv
+          rules: examples/orders_rules.json
+          out: reports/action-dirty
+          quarantine: reports/action-quarantine
+          junit: reports/action-junit.xml
+      - name: Dirty sample within a 5% tolerance
+        id: tolerant
+        uses: ./
+        with:
+          csv: examples/orders_dirty.csv
+          rules: examples/orders_rules.json
+          out: reports/action-tolerant
+          max-error-rate: "5"
+      - name: Check the outcomes and outputs
+        env:
+          CLEAN: ${{ steps.clean.outputs.status }}
+          DIRTY: ${{ steps.dirty.outcome }}
+          DIRTY_STATUS: ${{ steps.dirty.outputs.status }}
+          DIRTY_ERRORS: ${{ steps.dirty.outputs.errors }}
+          TOLERANT: ${{ steps.tolerant.outputs.status }}
+        run: |
+          test "$CLEAN" = PASS
+          test "$DIRTY" = failure
+          test "$DIRTY_STATUS" = FAIL
+          test "$DIRTY_ERRORS" = 11
+          test "$TOLERANT" = PASS
+          test -f reports/action-quarantine/failed.csv
+          test -f reports/action-junit.xml

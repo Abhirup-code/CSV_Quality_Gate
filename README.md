@@ -99,6 +99,22 @@ FAIL: 202 rows, 11 errors, 1 warnings (row pass rate 95.0%).
 
 The full report is in [`docs/sample/report.md`](docs/sample/report.md).
 
+## Use it in your own GitHub workflow
+
+This repo is also a GitHub Action. Add a step to any workflow:
+
+```yaml
+- uses: Abhirup-code/CSV_Quality_Gate@v1.2.0
+  with:
+    csv: data/orders.csv
+    rules: data/orders_rules.json
+    max-error-rate: "2"            # optional
+    quarantine: reports/quarantine # optional
+    junit: reports/junit.xml       # optional
+```
+
+The step fails on bad data, writes the Markdown report into the job summary, and sets the outputs `status`, `errors`, and `row-pass-rate` for later steps. Inputs reach the script only as environment variables, so a file name cannot inject shell commands. For the strongest supply-chain safety, pin the action to a full commit SHA instead of a tag. CI tests the action itself on the clean and dirty samples.
+
 ## Exit codes
 
 | Code | Meaning |

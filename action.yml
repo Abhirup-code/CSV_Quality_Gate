@@ -1,0 +1,81 @@
+name: CSV Quality Gate
+description: Check a CSV file against data quality rules, show the report in the job summary, and fail on bad data.
+author: Abhirup Khan
+branding:
+  icon: check-square
+  color: green
+
+inputs:
+  csv:
+    description: CSV file to check
+    required: true
+  rules:
+    description: JSON rules file
+    required: true
+  out:
+    description: Folder for report.json, report.md, and report.html
+    default: qualitygate-report
+  max-error-rate:
+    description: Pass if at most this percentage of rows have errors (empty means no tolerance)
+    default: ""
+  fail-on-warning:
+    description: Also fail when there are warnings ("true" or "false")
+    default: "false"
+  quarantine:
+    description: Folder for passed.csv and failed.csv (empty means none)
+    default: ""
+  junit:
+    description: Path for a JUnit XML report (empty means none)
+    default: ""
+
+outputs:
+  status:
+    description: PASS or FAIL
+    value: ${{ steps.check.outputs.status }}
+  errors:
+    description: Number of errors
+    value: ${{ steps.check.outputs.errors }}
+  row-pass-rate:
+    description: Percentage of rows with no errors
+    value: ${{ steps.check.outputs.row-pass-rate }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      with:
+        python-version: "3.12"
+    - name: Install CSV Quality Gate
+      shell: bash
+      env:
+        ACTION_PATH: ${{ github.action_path }}
+      run: pip install --quiet "$ACTION_PATH"
+    - name: Check the CSV
+      id: check
+      shell: bash
+      # Inputs reach the script only as environment variables, never pasted into the code.
+      env:
+        QG_CSV: ${{ inputs.csv }}
+        QG_RULES: ${{ inputs.rules }}
+        QG_OUT: ${{ inputs.out }}
+        QG_MAX_ERROR_RATE: ${{ inputs.max-error-rate }}
+        QG_FAIL_ON_WARNING: ${{ inputs.fail-on-warning }}
+        QG_QUARANTINE: ${{ inputs.quarantine }}
+        QG_JUNIT: ${{ inputs.junit }}
+      run: |
+        args=("$QG_CSV" --rules "$QG_RULES" --out "$QG_OUT")
+        [ -n "$QG_MAX_ERROR_RATE" ] && args+=(--max-error-rate "$QG_MAX_ERROR_RATE")
+        [ "$QG_FAIL_ON_WARNING" = "true" ] && args+=(--fail-on-warning)
+        [ -n "$QG_QUARANTINE" ] && args+=(--quarantine "$QG_QUARANTINE")
+        [ -n "$QG_JUNIT" ] && args+=(--junit "$QG_JUNIT")
+        code=0
+        qualitygate "${args[@]}" || code=$?
+        if [ -f "$QG_OUT/report.json" ]; then
+          python - "$QG_OUT/report.json" >> "$GITHUB_OUTPUT" <<'PY'
+        import json, sys
+        s = json.load(open(sys.argv[1]))["summary"]
+        print(f"status={s['status']}\nerrors={s['errors']}\nrow-pass-rate={s['row_pass_rate']}")
+        PY
+          cat "$QG_OUT/report.md" >> "$GITHUB_STEP_SUMMARY"
+        fi
+        exit "$code"
