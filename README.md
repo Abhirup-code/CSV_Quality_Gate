@@ -16,7 +16,7 @@ It can also draft the rules file for you from a good CSV, split a file into rows
 | --- | --- |
 | `required` | value must not be blank |
 | `type` | `int`, `float`, `date` (with an optional `format`) or `string` |
-| `min` / `max` | numeric range |
+| `min` / `max` | number or date range; for dates, `"today"` catches dates in the future |
 | `allowed` | value must be in a list |
 | `pattern` | value must fully match a regular expression |
 | `max_length` | text length limit |

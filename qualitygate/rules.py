@@ -1,4 +1,5 @@
 """Load and validate a JSON rules file."""
+import datetime as dt
 import json
 import re
 
@@ -33,8 +34,9 @@ def validate_rules(rules):
             raise RulesError(f"column '{name}': type must be one of {sorted(VALID_TYPES)}")
         if spec.get("severity", "error") not in SEVERITIES:
             raise RulesError(f"column '{name}': severity must be 'error' or 'warning'")
-        if ("min" in spec or "max" in spec) and col_type not in {"int", "float"}:
-            raise RulesError(f"column '{name}': min/max need type int or float")
+        for bound in ("min", "max"):
+            if bound in spec:
+                _check_bound(name, bound, spec[bound], col_type, spec.get("format"))
         if "pattern" in spec:
             try:
                 re.compile(spec["pattern"])
@@ -46,6 +48,23 @@ def validate_rules(rules):
         raise RulesError(f"dataset: unknown rule(s) {sorted(unknown)}")
     validate_compare(rules.get("dataset", {}).get("compare", []), columns)
     return rules
+
+
+def _check_bound(name, bound, value, col_type, fmt):
+    """min/max must be a number for number columns, or a date (or "today") for date columns."""
+    where = f"column '{name}': {bound}"
+    if col_type in {"int", "float"}:
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise RulesError(f"{where} must be a number")
+    elif col_type == "date":
+        if value == "today":
+            return
+        try:
+            dt.datetime.strptime(str(value), fmt or "%Y-%m-%d")
+        except ValueError:
+            raise RulesError(f"{where} must be a date in the column's format, or \"today\"") from None
+    else:
+        raise RulesError(f"column '{name}': min/max need type int, float, or date")
 
 
 def _kind(spec):

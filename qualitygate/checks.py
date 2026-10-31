@@ -34,6 +34,17 @@ def parse_value(text, col_type, fmt=None):
     return text
 
 
+def _bound(spec, key, col_type):
+    """The min or max to compare with, as a number or a date. "today" means the date of the run."""
+    if key not in spec:
+        return None
+    if col_type != "date":
+        return spec[key]
+    if spec[key] == "today":
+        return dt.date.today()
+    return parse_value(str(spec[key]), "date", spec.get("format"))
+
+
 def check_cell(raw, spec):
     """Return a list of (rule, message) problems for one cell."""
     value = raw.strip()
@@ -47,11 +58,14 @@ def check_cell(raw, spec):
         return [("type", f"'{value}' is not a valid {col_type}")]
 
     problems = []
-    if col_type in {"int", "float"}:
-        if "min" in spec and parsed < spec["min"]:
-            problems.append(("min", f"{value} is below the minimum of {spec['min']}"))
-        if "max" in spec and parsed > spec["max"]:
-            problems.append(("max", f"{value} is above the maximum of {spec['max']}"))
+    if col_type in {"int", "float", "date"}:
+        low, high = _bound(spec, "min", col_type), _bound(spec, "max", col_type)
+        if low is not None and parsed < low:
+            problems.append(("min", f"{value} is {'before' if col_type == 'date' else 'below'} "
+                                    f"the minimum of {spec['min']}"))
+        if high is not None and parsed > high:
+            problems.append(("max", f"{value} is {'after' if col_type == 'date' else 'above'} "
+                                    f"the maximum of {spec['max']}"))
     if "allowed" in spec and value not in [str(a) for a in spec["allowed"]]:
         problems.append(("allowed", f"'{value}' is not one of {spec['allowed']}"))
     if "pattern" in spec and not re.fullmatch(spec["pattern"], value):
