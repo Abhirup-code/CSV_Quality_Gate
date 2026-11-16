@@ -10,6 +10,7 @@ from .infer import infer_rules
 from .quarantine import write_quarantine
 from .report import summarize, to_html, to_junit_files, to_markdown
 from .rules import RulesError, load_rules
+from .trend import compare_runs, describe, read_baseline
 
 
 def percentage(text):
@@ -46,6 +47,10 @@ def build_parser():
                    help="pass if at most this percentage of rows have errors (file-wide errors still fail)")
     p.add_argument("--quarantine", metavar="FOLDER",
                    help="also write passed.csv (rows with no errors) and failed.csv (the rest, with reasons)")
+    p.add_argument("--baseline", metavar="FOLDER",
+                   help="an earlier --out folder: report what changed since that run")
+    p.add_argument("--fail-on-worse", action="store_true",
+                   help="with --baseline, exit 1 when there are more errors or a newly broken rule")
     p.add_argument("--junit", metavar="FILE", help="also write a JUnit XML test report for CI")
     p.add_argument("--version", action="version", version=f"qualitygate {__version__}")
     return p
@@ -98,7 +103,7 @@ def folder_names(paths):
     return names
 
 
-def check_file(path, rules, rules_name, args, out, quarantine):
+def check_file(path, rules, rules_name, args, out, quarantine, baseline=None):
     """Check one file and write its reports. Returns (exit code, summary, issues), or (2, None, None)."""
     try:
         header, rows = read_csv(path, args.delimiter)
@@ -122,6 +127,15 @@ def check_file(path, rules, rules_name, args, out, quarantine):
         print(f"Quarantine: {good} rows in passed.csv, {bad} rows in failed.csv ({quarantine}/)")
 
     failed = summary["status"] == "FAIL" or (args.fail_on_warning and summary["warnings"])
+    if baseline:
+        before = read_baseline(baseline)
+        if before is None:
+            # A first run has nothing to compare with, which is not a reason to fail a pipeline.
+            print(f"No usable baseline report at {baseline}, so nothing to compare.", file=sys.stderr)
+        else:
+            diff = compare_runs(before, summary)
+            print(describe(diff))
+            failed = failed or (args.fail_on_worse and diff["worse"])
     return (1 if failed else 0), summary, issues
 
 
@@ -144,9 +158,13 @@ def main(argv=None):
     for path, name in zip(args.csv_paths, names, strict=True):
         out = Path(args.out) / name if several else Path(args.out)
         quarantine = args.quarantine and (Path(args.quarantine) / name if several else Path(args.quarantine))
+        # The baseline folder has the same shape as --out, so each file finds its own report.
+        baseline = args.baseline and (
+            (Path(args.baseline) / name if several else Path(args.baseline)) / "report.json"
+        )
         if several:
             print(f"{path}:")
-        code, summary, issues = check_file(path, rules, rules_name, args, out, quarantine)
+        code, summary, issues = check_file(path, rules, rules_name, args, out, quarantine, baseline)
         codes.append(code)
         if summary is not None:
             results.append((summary, issues))

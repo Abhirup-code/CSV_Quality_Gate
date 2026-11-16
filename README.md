@@ -117,6 +117,26 @@ python -m qualitygate examples/orders_dirty.csv --rules examples/orders_rules.js
 
 This writes `passed.csv` (rows with no errors, ready to load) and `failed.csv` (the rest, with their original line number and every error reason). Warnings do not fail a row.
 
+## Is the data getting better or worse?
+
+A single run only says pass or fail. Point `--baseline` at an earlier `--out` folder and the run also
+reports what moved:
+
+```
+qualitygate data.csv --rules rules.json --out reports --baseline last-run
+```
+
+```
+FAIL: 500 rows, 4 errors, 0 warnings (row pass rate 99.2%). Reports in reports/
+Compared with the baseline: errors 9 to 4; row pass rate 98.2% to 99.2%; no longer broken: unique.
+```
+
+Add `--fail-on-worse` to fail the run when there are more errors than before, a rule broke that was
+clean last time, or a file that used to pass now fails. That catches data rotting slowly under a
+`--max-error-rate` tolerance, where the status stays PASS for weeks. The baseline folder has the same
+shape as `--out`, so a run over several files finds a baseline for each one. A first run has nothing to
+compare with: it says so and does not fail.
+
 ## Show results in CI
 
 ```
@@ -180,7 +200,7 @@ The step fails on bad data, writes the Markdown report into the job summary, and
 
 ## Tests
 
-154 pytest tests cover rule validation, every check, placeholder values such as NULL and N/A, comparisons, date ranges, blank limits, error tolerance, all four report formats, inference, quarantine, other separators, Excel files, several files per run, and the command line. Property-based tests with [Hypothesis](https://hypothesis.readthedocs.io) generate random tables (blanks, NaN, infinity, non-Latin digits, loose dates) and check that any file passes the rules inferred from it and that summary counts always add up.
+165 pytest tests cover rule validation, every check, placeholder values such as NULL and N/A, comparisons, date ranges, blank limits, error tolerance, all four report formats, inference, quarantine, other separators, Excel files, several files per run, comparison with an earlier run, and the command line. Property-based tests with [Hypothesis](https://hypothesis.readthedocs.io) generate random tables (blanks, NaN, infinity, non-Latin digits, loose dates) and check that any file passes the rules inferred from it and that summary counts always add up.
 
 GitHub Actions runs everything on every push and pull request, then checks that the clean sample passes, the dirty sample fails, rules inferred from the clean sample still catch the dirty one, and exactly 10 rows land in quarantine. A separate job runs the reusable action on the samples and checks its outcomes and outputs. ruff lints the code, including security rules, the workflow has a read-only token, and every action is pinned to a commit SHA.
 
@@ -189,7 +209,7 @@ See [CHANGELOG.md](CHANGELOG.md) for what changed in each version.
 ## Project layout
 
 ```
-qualitygate/   rules.py, checks.py, report.py (JSON, Markdown, HTML, JUnit), infer.py, quarantine.py, cli.py
+qualitygate/   rules.py, checks.py, report.py (JSON, Markdown, HTML, JUnit), infer.py, quarantine.py, trend.py, cli.py
 action.yml     the reusable GitHub Action
 examples/      rules file and synthetic sample data
 tests/         pytest and Hypothesis tests

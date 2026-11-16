@@ -7,6 +7,10 @@ All notable changes to CSV Quality Gate. The format follows
 ## [Unreleased]
 
 ### Added
+- `--baseline`, pointing at an earlier `--out` folder, reports what changed since that run: errors,
+  warnings, row pass rate, rules that stopped breaking, and rules broken for the first time.
+  `--fail-on-worse` turns that into a failure, which catches data rotting under a `--max-error-rate`
+  tolerance where the status stays PASS. A missing baseline is reported and does not fail the run.
 - `null_values`, the placeholder strings that mean "no value" in a column, such as `NULL`, `N/A`, or `-`.
   Set it per column or once for the whole file under `dataset`. A placeholder is then treated exactly like
   a blank cell, so `required` catches it, no other rule reports it, and it counts towards `max_blank_rate`.
