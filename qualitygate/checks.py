@@ -20,6 +20,21 @@ def read_csv(path, delimiter=","):
     return [h.strip() for h in header], rows
 
 
+def null_set(spec, dataset=None):
+    """The placeholders that stand for "no value" in a column: its own list, or the dataset default.
+
+    Compared after stripping and lowercasing, so "N/A", "n/a", and " NA " all count.
+    """
+    values = spec.get("null_values", (dataset or {}).get("null_values", ()))
+    return frozenset(str(v).strip().lower() for v in values if str(v).strip())
+
+
+def is_blank(value, nulls=()):
+    """True when a cell holds nothing, or a placeholder that stands for nothing."""
+    text = value.strip()
+    return not text or text.lower() in nulls
+
+
 def parse_value(text, col_type, fmt=None):
     """Convert text to its type, or raise ValueError."""
     if col_type == "int":
@@ -45,11 +60,14 @@ def _bound(spec, key, col_type):
     return parse_value(str(spec[key]), "date", spec.get("format"))
 
 
-def check_cell(raw, spec):
+def check_cell(raw, spec, nulls=()):
     """Return a list of (rule, message) problems for one cell."""
     value = raw.strip()
-    if value == "":
-        return [("required", "value is missing")] if spec.get("required") else []
+    if is_blank(value, nulls):
+        if not spec.get("required"):
+            return []
+        stands_for = f" ('{value}' stands for no value)" if value else ""
+        return [("required", f"value is missing{stands_for}")]
 
     col_type = spec.get("type", "string")
     try:
@@ -87,6 +105,7 @@ def run_checks(header, rows, rules):
     dataset = rules.get("dataset", {})
 
     index = {name: i for i, name in enumerate(header)}
+    nulls = {name: null_set(spec, dataset) for name, spec in columns.items()}
     for name in columns:
         if name not in index:
             issues.append(_issue(None, name, "missing_column", None,
@@ -109,7 +128,7 @@ def run_checks(header, rows, rules):
             continue
         well_formed += 1
         for name in blanks:
-            if not cells[index[name]].strip():
+            if is_blank(cells[index[name]], nulls[name]):
                 blanks[name] += 1
 
         for name, spec in columns.items():
@@ -117,10 +136,10 @@ def run_checks(header, rows, rules):
                 continue
             raw = cells[index[name]]
             severity = spec.get("severity", "error")
-            for rule, message in check_cell(raw, spec):
+            for rule, message in check_cell(raw, spec, nulls[name]):
                 issues.append(_issue(line, name, rule, raw.strip(), message, severity))
             value = raw.strip()
-            if name in seen_unique and value:
+            if name in seen_unique and not is_blank(value, nulls[name]):
                 first = seen_unique[name].get(value)
                 if first is None:
                     seen_unique[name][value] = line
@@ -129,7 +148,7 @@ def run_checks(header, rows, rules):
                                          f"'{value}' already appears on line {first}", severity))
 
         for item in dataset.get("compare", []):
-            problem = compare_cells(cells, index, columns, item)
+            problem = compare_cells(cells, index, columns, item, nulls)
             if problem:
                 issues.append(_issue(line, item["left"], "compare", cells[index[item["left"]]].strip(),
                                      problem, item.get("severity", "error")))
@@ -153,16 +172,17 @@ def run_checks(header, rows, rules):
     return issues
 
 
-def compare_cells(cells, index, columns, item):
+def compare_cells(cells, index, columns, item, nulls=None):
     """A message if the row breaks a comparison like ship_date >= order_date, else None.
 
     A blank or unreadable value is skipped here: the column's own rules report it.
     """
+    nulls = nulls or {}
     left, right = item["left"], item["right"]
     if left not in index or right not in index:
         return None
     raw_left, raw_right = cells[index[left]].strip(), cells[index[right]].strip()
-    if not raw_left or not raw_right:
+    if is_blank(raw_left, nulls.get(left, ())) or is_blank(raw_right, nulls.get(right, ())):
         return None
     try:
         a = parse_value(raw_left, columns[left].get("type", "string"), columns[left].get("format"))

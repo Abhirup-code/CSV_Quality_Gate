@@ -4,6 +4,13 @@ All notable changes to CSV Quality Gate. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- `null_values`, the placeholder strings that mean "no value" in a column, such as `NULL`, `N/A`, or `-`.
+  Set it per column or once for the whole file under `dataset`. A placeholder is then treated exactly like
+  a blank cell, so `required` catches it, no other rule reports it, and it counts towards `max_blank_rate`.
+
 ## [1.3.1] - 2026-10-31
 
 ### Changed

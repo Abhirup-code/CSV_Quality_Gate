@@ -5,8 +5,8 @@ import re
 
 VALID_TYPES = {"string", "int", "float", "date"}
 COLUMN_KEYS = {"type", "required", "unique", "min", "max", "allowed",
-               "pattern", "format", "max_length", "severity", "max_blank_rate"}
-DATASET_KEYS = {"min_rows", "no_duplicate_rows", "compare"}
+               "pattern", "format", "max_length", "severity", "max_blank_rate", "null_values"}
+DATASET_KEYS = {"min_rows", "no_duplicate_rows", "compare", "null_values"}
 COMPARE_OPS = {"<", "<=", "==", "!=", ">", ">="}
 COMPARE_KEYS = {"left", "op", "right", "severity"}
 SEVERITIES = {"error", "warning"}
@@ -34,6 +34,8 @@ def validate_rules(rules):
             raise RulesError(f"column '{name}': type must be one of {sorted(VALID_TYPES)}")
         if spec.get("severity", "error") not in SEVERITIES:
             raise RulesError(f"column '{name}': severity must be 'error' or 'warning'")
+        if "null_values" in spec:
+            _check_null_values(f"column '{name}'", spec["null_values"])
         if "max_blank_rate" in spec:
             rate = spec["max_blank_rate"]
             if isinstance(rate, bool) or not isinstance(rate, (int, float)) or not 0 <= rate <= 100:
@@ -47,11 +49,23 @@ def validate_rules(rules):
             except re.error as exc:
                 raise RulesError(f"column '{name}': bad pattern ({exc})") from exc
 
-    unknown = set(rules.get("dataset", {})) - DATASET_KEYS
+    dataset = rules.get("dataset", {})
+    unknown = set(dataset) - DATASET_KEYS
     if unknown:
         raise RulesError(f"dataset: unknown rule(s) {sorted(unknown)}")
+    if "null_values" in dataset:
+        _check_null_values("dataset", dataset["null_values"])
     validate_compare(rules.get("dataset", {}).get("compare", []), columns)
     return rules
+
+
+def _check_null_values(where, values):
+    """null_values is a list of the placeholder strings that mean "no value", such as NULL or N/A."""
+    if not isinstance(values, list):
+        raise RulesError(f"{where}: null_values must be a list of strings")
+    for value in values:
+        if not isinstance(value, str) or not value.strip():
+            raise RulesError(f"{where}: null_values must be a list of non-empty strings")
 
 
 def _check_bound(name, bound, value, col_type, fmt):

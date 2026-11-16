@@ -22,9 +22,10 @@ It can also draft the rules file for you from a good CSV, split a file into rows
 | `max_length` | text length limit |
 | `unique` | no repeated values in a column |
 | `max_blank_rate` | at most this percentage of the column may be blank, for columns that are optional but should usually be filled |
+| `null_values` | placeholder strings that mean "no value" for this column, such as `["NULL", "N/A", "-"]` |
 | `severity` | `error` (fails the run) or `warning` (reported only) |
 
-Dataset rules: `min_rows`, `no_duplicate_rows`, and `compare`. It also reports missing columns and rows with the wrong number of fields.
+Dataset rules: `min_rows`, `no_duplicate_rows`, `null_values` (the default list for every column), and `compare`. It also reports missing columns and rows with the wrong number of fields.
 
 `compare` checks two columns in the same row, using each column's type, so numbers compare as numbers and dates as dates:
 
@@ -57,6 +58,28 @@ qualitygate examples/orders_clean.csv --rules examples/orders_rules.json
 ```
 
 Each run writes `reports/report.json`, `reports/report.md`, and `reports/report.html` (change the folder with `--out`). The HTML report is a single file with no scripts, so it can be attached to a ticket or emailed.
+
+## Placeholders that mean nothing
+
+Exports often write `NULL`, `N/A`, or `-` where a value is missing. Those are not blank, so a required
+column would pass on them, and a date column would report a confusing bad-date error. Name them and they
+are treated as missing instead:
+
+```json
+{
+  "columns": {
+    "order_id": {"type": "int", "required": true, "unique": true},
+    "shipped_on": {"type": "date", "null_values": ["not shipped", "pending"]}
+  },
+  "dataset": {"null_values": ["NULL", "N/A", "-"]}
+}
+```
+
+The dataset list is the default for every column, and a column's own list replaces it. Matching ignores
+case and surrounding spaces, so `N/A`, `n/a`, and ` NA ` are the same. A placeholder behaves exactly like
+a blank cell: `required` reports it (and says which placeholder it found), no other rule is checked
+against it, it is skipped in comparisons, two of them are not a duplicate value, and it counts towards
+`max_blank_rate`.
 
 ## Check many files at once
 
@@ -112,7 +135,7 @@ python -m qualitygate data.csv --rules rules.json --junit reports/junit.xml
     "amount": {"type": "float", "required": true, "min": 0, "max": 10000},
     "region": {"type": "string", "allowed": ["Midwest", "Northeast", "South", "West"], "severity": "warning"}
   },
-  "dataset": {"min_rows": 1, "no_duplicate_rows": true}
+  "dataset": {"min_rows": 1, "no_duplicate_rows": true, "null_values": ["NULL", "N/A"]}
 }
 ```
 
@@ -157,7 +180,7 @@ The step fails on bad data, writes the Markdown report into the job summary, and
 
 ## Tests
 
-129 pytest tests cover rule validation, every check, comparisons, date ranges, blank limits, error tolerance, all four report formats, inference, quarantine, other separators, Excel files, several files per run, and the command line. Property-based tests with [Hypothesis](https://hypothesis.readthedocs.io) generate random tables (blanks, NaN, infinity, non-Latin digits, loose dates) and check that any file passes the rules inferred from it and that summary counts always add up.
+154 pytest tests cover rule validation, every check, placeholder values such as NULL and N/A, comparisons, date ranges, blank limits, error tolerance, all four report formats, inference, quarantine, other separators, Excel files, several files per run, and the command line. Property-based tests with [Hypothesis](https://hypothesis.readthedocs.io) generate random tables (blanks, NaN, infinity, non-Latin digits, loose dates) and check that any file passes the rules inferred from it and that summary counts always add up.
 
 GitHub Actions runs everything on every push and pull request, then checks that the clean sample passes, the dirty sample fails, rules inferred from the clean sample still catch the dirty one, and exactly 10 rows land in quarantine. A separate job runs the reusable action on the samples and checks its outcomes and outputs. ruff lints the code, including security rules, the workflow has a read-only token, and every action is pinned to a commit SHA.
 
